@@ -9,7 +9,7 @@ from typing import Dict, Any
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.schemas import (
@@ -158,7 +158,7 @@ async def predict_single(leitura: LeituraSensorInput):
 @app.post("/predict-batch", response_model=RespostaLote, tags=["Inferência em Malha Fechada"])
 async def predict_batch(payload: LoteSensoresInput):
     """Processamento vetorial em lote para sincronização periódica de sensores."""
-    resultados: List[DiagnosticoPredicao] = []
+    resultados: list[DiagnosticoPredicao] = []
     for item in payload.leituras:
         res = await predict_single(item)
         resultados.append(res)

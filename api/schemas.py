@@ -5,7 +5,7 @@ inferência preditiva e diagnóstico operacional da VulcanTech.
 from typing import List, Dict, Optional, Literal
 from pydantic import BaseModel, Field
 
-LigaMetálicaTipo = Literal[
+LigaMetalicaTipo = Literal[
     "Aco_Carbono_316L",
     "Aluminio_7075",
     "Liga_Titanio_Ti6Al4V"
@@ -22,7 +22,7 @@ class LeituraSensorInput(BaseModel):
     id_celula: Literal["CEL-201", "CEL-202", "CEL-203", "CEL-204"] = Field(
         ..., description="Identificador da célula flexível de manufatura."
     )
-    liga_metalica: LigaMetálicaTipo = Field(
+    liga_metalica: LigaMetalicaTipo = Field(
         ..., description="Material em processamento no momento da recolha."
     )
     temperatura_fuso_c: float = Field(..., ge=0.0, le=300.0, description="Temperatura do cabeçote/matriz em °C.")
