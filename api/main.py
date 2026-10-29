@@ -17,7 +17,6 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-# Garante que a raiz do projeto esteja no sys.path mesmo rodando pelo botão Play do VS Code
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
@@ -46,21 +45,21 @@ ESTADO_SISTEMA: Dict[str, Any] = {
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Gerencia o ciclo de vida e carrega os artefatos de IA no arranque."""
+    """Carrega o modelo preditivo e metadados no arranque do serviço."""
     if CAMINHO_MODELO.exists():
         artefato = joblib.load(CAMINHO_MODELO)
         ESTADO_SISTEMA["modelo"] = artefato["model"]
         ESTADO_SISTEMA["feature_names"] = artefato["feature_names"]
         ESTADO_SISTEMA["target_classes"] = artefato["target_classes"]
-        print(f"-> [OK] Modelo carregado com sucesso de: {CAMINHO_MODELO}")
+        print(f"-> [OK] Modelo preditivo carregado com sucesso: {CAMINHO_MODELO}")
     else:
-        print(f"-> [AVISO] Modelo não localizado em {CAMINHO_MODELO}. Execute o notebook 02_modelagem_oee.ipynb.")
+        print(f"-> [AVISO] Modelo não localizado em {CAMINHO_MODELO}. Execute notebooks/02_modelagem_oee.ipynb.")
     yield
     ESTADO_SISTEMA.clear()
 
 
 app = FastAPI(
-    title="VulcanTech Smart Metals — Industrial AI & Vision Portal",
+    title="VulcanTech Smart Metals — Industrial AI, OEE & Vision Portal",
     description="Monitoramento preditivo, OEE dinâmico e controle óptico de solda e termografia em malha fechada.",
     version="2.0.0",
     lifespan=lifespan
@@ -135,7 +134,6 @@ async def health_check():
 
 @app.get("/analytics/summary", tags=["Portal Analítico"])
 async def get_analytics_summary():
-    """Retorna os indicadores reais consolidados do dataset VulcanTech para os gráficos do portal."""
     return {
         "distribuicao_classes": {
             "labels": [
@@ -218,11 +216,10 @@ async def predict_batch(payload: LoteSensoresInput):
 @app.post("/inspect/weld", tags=["Visão Computacional (OpenCV)"])
 async def inspect_weld_endpoint(
     file: UploadFile = File(...),
-    limiar_porosidade_pct: float = Form(1.5),
+    limiar_porosidade_pct: float = Form(0.20),
     canny_low: int = Form(45),
     canny_high: int = Form(135)
 ):
-    """Recebe imagem de cordão de solda via upload e executa detecção de porosidade e descontinuidade."""
     conteudo = await file.read()
     img = cv2.imdecode(np.frombuffer(conteudo, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
@@ -241,11 +238,10 @@ async def inspect_weld_endpoint(
 @app.post("/inspect/weld-preset", tags=["Visão Computacional (OpenCV)"])
 async def inspect_weld_preset(
     cenario: str = Form("poros"),
-    limiar_porosidade_pct: float = Form(1.5),
+    limiar_porosidade_pct: float = Form(0.20),
     canny_low: int = Form(45),
     canny_high: int = Form(135)
 ):
-    """Gera amostra sintética instantânea no servidor e executa a inspeção óptica."""
     caminho_temp = BASE_DIR / "data" / "test_images" / "weld" / f"preset_{cenario}.png"
     com_poros = cenario in ["poros", "critico"]
     com_descontinuidade = cenario == "critico"
@@ -269,7 +265,6 @@ async def inspect_weld_preset(
 
 @app.post("/inspect/thermal", tags=["Visão Computacional (OpenCV)"])
 async def inspect_thermal_endpoint(file: UploadFile = File(...)):
-    """Analisa imagem termográfica da Zona Afetada pelo Calor (HAZ) no espaço HSV."""
     conteudo = await file.read()
     img = cv2.imdecode(np.frombuffer(conteudo, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
@@ -282,7 +277,6 @@ async def inspect_thermal_endpoint(file: UploadFile = File(...)):
 
 @app.post("/inspect/thermal-preset", tags=["Visão Computacional (OpenCV)"])
 async def inspect_thermal_preset(critico: bool = Form(True)):
-    """Gera termografia sintética instantânea da HAZ e executa segmentação HSV."""
     caminho_temp = BASE_DIR / "data" / "test_images" / "thermal" / "preset_thermal.png"
     gerar_amostra_termografia_haz(caminho_saida=caminho_temp, com_ponto_quente_critico=critico)
     img = cv2.imread(str(caminho_temp))
@@ -674,9 +668,9 @@ DASHBOARD_HTML = """
                         <div class="mb-2">
                             <div class="slider-label">
                                 <span>Limiar Máximo de Porosidade (%):</span>
-                                <span id="lblPorosity" style="color: var(--weg-cyan);" class="fw-bold">0.15%</span>
+                                <span id="lblPorosity" style="color: var(--weg-cyan);" class="fw-bold">0.20%</span>
                             </div>
-                            <input type="range" class="form-range" id="rngPorosity" min="0.01" max="2.00" step="0.01" value="0.15">
+                            <input type="range" class="form-range" id="rngPorosity" min="0.01" max="2.00" step="0.01" value="0.20">
                         </div>
 
                         <div class="row g-2 mb-3">
@@ -823,7 +817,7 @@ DASHBOARD_HTML = """
                                     <div class="preview-box" style="height: 230px;"><img id="imgThermalMask" src=""></div>
                                 </div>
                                 <div class="col-md-6">
-                                    <small class="d-block mb-1 fw-bold text-warning">Delimilitação de Zonas de Risco Térmico</small>
+                                    <small class="d-block mb-1 fw-bold text-warning">Delimitação de Zonas de Risco Térmico</small>
                                     <div class="preview-box" style="height: 230px;"><img id="imgThermalOverlay" src=""></div>
                                 </div>
                             </div>
@@ -1047,8 +1041,7 @@ DASHBOARD_HTML = """
         checkHealth();
         setInterval(checkHealth, 4000);
 
-        // Sliders de solda
-        document.getElementById('rngPorosity').addEventListener('input', e => document.getElementById('lblPorosity').innerText = e.target.value + '%');
+        document.getElementById('rngPorosity').addEventListener('input', e => document.getElementById('lblPorosity').innerText = parseFloat(e.target.value).toFixed(2) + '%');
         document.getElementById('rngCannyLow').addEventListener('input', e => document.getElementById('lblCannyLow').innerText = e.target.value);
         document.getElementById('rngCannyHigh').addEventListener('input', e => document.getElementById('lblCannyHigh').innerText = e.target.value);
 
@@ -1236,5 +1229,4 @@ async def serve_dashboard():
 
 
 if __name__ == "__main__":
-    # Permite rodar clicando diretamente no botão Play do VS Code!
     uvicorn.run("api.main:app", host="127.0.0.1", port=8000, reload=True, app_dir=str(BASE_DIR))
