@@ -1,2 +1,13 @@
 .venv/
 __pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+models/*.joblib
+*.pkl
+data/test_images/weld/*.png
+data/test_images/thermal/*.png
+.env
+.vscode/
+.DS_Store
+Thumbs.db
