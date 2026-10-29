@@ -676,7 +676,7 @@ DASHBOARD_HTML = """
                                 <span>Limiar Máximo de Porosidade (%):</span>
                                 <span id="lblPorosity" style="color: var(--weg-cyan);" class="fw-bold">0.15%</span>
                             </div>
-                            <input type="range" class="form-range" id="rngPorosity" min="0.05" max="2.00" step="0.05" value="0.15">
+                            <input type="range" class="form-range" id="rngPorosity" min="0.01" max="2.00" step="0.01" value="0.15">
                         </div>
 
                         <div class="row g-2 mb-3">

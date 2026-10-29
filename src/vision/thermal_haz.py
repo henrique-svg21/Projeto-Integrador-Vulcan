@@ -7,29 +7,31 @@ from typing import Dict, Any, List
 import cv2
 import numpy as np
 
+
 def _img_to_base64(img: np.ndarray) -> str:
     _, buffer = cv2.imencode(".png", img)
     b64_str = base64.b64encode(buffer).decode("utf-8")
     return f"data:image/png;base64,{b64_str}"
 
+
 def analisar_haz_termica(imagem_termica_bgr: np.ndarray) -> Dict[str, Any]:
     """
-    Converte para HSV, segmenta zonas com superaquecimento crítico
-    e gera imagens anotadas em Base64.
+    Converte para HSV, segmenta exclusivamente núcleos de sobreaquecimento crítico
+    (vermelho profundo / branco térmico) e gera imagens anotadas em Base64.
     """
     hsv = cv2.cvtColor(imagem_termica_bgr, cv2.COLOR_BGR2HSV)
     
-    # Faixas HSV de superaquecimento crítico (Vermelho Intenso / Magenta)
-    limiar_inf_v1 = np.array([0, 140, 160], dtype=np.uint8)
-    limiar_sup_v1 = np.array([10, 255, 255], dtype=np.uint8)
-    limiar_inf_v2 = np.array([170, 140, 160], dtype=np.uint8)
+    # Faixas HSV estritas para superaquecimento crítico (>600°C no mapa térmico)
+    limiar_inf_v1 = np.array([0, 160, 170], dtype=np.uint8)
+    limiar_sup_v1 = np.array([6, 255, 255], dtype=np.uint8)
+    limiar_inf_v2 = np.array([172, 160, 170], dtype=np.uint8)
     limiar_sup_v2 = np.array([180, 255, 255], dtype=np.uint8)
     
     mascara_v1 = cv2.inRange(hsv, limiar_inf_v1, limiar_sup_v1)
     mascara_v2 = cv2.inRange(hsv, limiar_inf_v2, limiar_sup_v2)
     mascara_sobreaquecimento = cv2.bitwise_or(mascara_v1, mascara_v2)
     
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 4))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     mascara_limpa = cv2.morphologyEx(mascara_sobreaquecimento, cv2.MORPH_OPEN, kernel)
     
     area_critica_px = int(cv2.countNonZero(mascara_limpa))
@@ -44,7 +46,7 @@ def analisar_haz_termica(imagem_termica_bgr: np.ndarray) -> Dict[str, Any]:
     hotspots: List[Dict[str, Any]] = []
     for cnt in contornos_hotspots:
         area = cv2.contourArea(cnt)
-        if area >= 20.0:
+        if area >= 25.0:
             x, y, w, h = cv2.boundingRect(cnt)
             hotspots.append({
                 "bbox": (int(x), int(y), int(w), int(h)),
@@ -52,11 +54,11 @@ def analisar_haz_termica(imagem_termica_bgr: np.ndarray) -> Dict[str, Any]:
             })
             cv2.rectangle(img_overlay, (x, y), (x + w, y + h), (255, 255, 255), 2)
             cv2.putText(
-                img_overlay, "HOTSPOT", (x, max(y - 6, 12)),
+                img_overlay, "HOTSPOT CRITICO", (x, max(y - 6, 12)),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1
             )
             
-    risco_trinca_termica = bool(area_critica_px > 120)
+    risco_trinca_termica = bool(area_critica_px > 100)
 
     return {
         "risco_trinca_termica": risco_trinca_termica,
