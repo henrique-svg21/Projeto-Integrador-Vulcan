@@ -118,7 +118,7 @@ cd Projeto-Integrador-Vulcan
 ### 3. Instalar as Dependências
 
 ```bash
-pip install --upgrade pip
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
