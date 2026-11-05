@@ -953,7 +953,7 @@ DASHBOARD_HTML = """
     <footer class="text-center">
         <div class="container">
             <p class="mb-1 fw-bold text-white">VulcanTech Smart Metals S.A. • Plataforma de Inteligência Industrial e Visão Computacional</p>
-            <small>Indústria 4.0 & MLOps • Jaraguá do Sul, SC — 2026 • Desenvolvido por Henrique (Rique)</small>
+            <small>Indústria 4.0 & MLOps • Jaraguá do Sul, SC — 2026</small>
         </div>
     </footer>
 
