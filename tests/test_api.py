@@ -11,11 +11,17 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
-from api.main import app, CAMINHO_MODELO
+from api.main import app
 
-client = TestClient(app)
 
-def test_healthcheck():
+@pytest.fixture(scope="module")
+def client():
+    """Garante a execução do ciclo lifespan (carregamento do modelo .joblib em memória)."""
+    with TestClient(app) as c:
+        yield c
+
+
+def test_healthcheck(client):
     """Valida se o endpoint de integridade responde 200 e reporta modelo carregado."""
     response = client.get("/health")
     assert response.status_code == 200
@@ -23,7 +29,8 @@ def test_healthcheck():
     assert dados["status"] == "OPERATIONAL"
     assert dados["modelo_carregado"] is True
 
-def test_predicao_operacao_normal():
+
+def test_predicao_operacao_normal(client):
     """Valida a inferência em condição nominal de máquina (Classe 0)."""
     payload = {
         "id_celula": "CEL-201",
@@ -43,7 +50,8 @@ def test_predicao_operacao_normal():
     assert res["acao_recomendada"] == "MANTER_OPERACAO"
     assert res["impacto_oee_estimado"]["oee_calculado"] == 1.0
 
-def test_predicao_falha_severa_desalinhamento():
+
+def test_predicao_falha_severa_desalinhamento(client):
     """Valida gatilho emergencial para vibração excessiva e perda de fixação (Classe 3)."""
     payload = {
         "id_celula": "CEL-203",
@@ -59,14 +67,15 @@ def test_predicao_falha_severa_desalinhamento():
     response = client.post("/predict", json=payload)
     assert response.status_code == 200
     res = response.json()
-    assert res["tipo_falha_codigo"] in [1, 3]  # Anomalia grave
+    assert res["tipo_falha_codigo"] in [1, 3]
     assert res["acao_recomendada"] in ["INTERROMPER_EMERGENCIA", "REDUZIR_VELOCIDADE_50%"]
 
-def test_validacao_rejeicao_dados_invalidos():
+
+def test_validacao_rejeicao_dados_invalidos(client):
     """Valida se o Pydantic rejeita leituras com valores fisicamente absurdos."""
     payload_invalido = {
-        "id_celula": "CEL-999",  # Célula inexistente
-        "liga_metalica": "Ouro",  # Liga inválida
+        "id_celula": "CEL-999",
+        "liga_metalica": "Ouro",
         "temperatura_fuso_c": -50.0,
         "vibracao_triaxial_rms_mms": 1.0,
         "torque_fuso_nm": 100.0,
@@ -76,4 +85,4 @@ def test_validacao_rejeicao_dados_invalidos():
         "nivel_ruido_db": 50.0
     }
     response = client.post("/predict", json=payload_invalido)
-    assert response.status_code == 422  # Unprocessable Entity
+    assert response.status_code == 422
