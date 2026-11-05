@@ -135,5 +135,10 @@ def inspecionar_cordao_solda(
             "canny_b64": _img_to_base64(bordos_canny),
             "mascara_poros_b64": _img_to_base64(mascara_poros_validados),
             "overlay_b64": _img_to_base64(img_overlay)
+        },
+        "mascaras": {
+            "bordos_canny": bordos_canny,
+            "mascara_cordao": mascara_inspecao,
+            "mascara_poros": mascara_poros_validados
         }
     }
